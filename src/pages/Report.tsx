@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import Layout from '../components/Layout';
+import MaintenanceProof from '../components/MaintenanceProof';
 import { useToast } from '../components/Toast';
-import { getInspection, listPhotos, listReports, saveReport } from '../database/db';
+import { getInspection, listPhotos, listReports, saveReport, startNewRevision } from '../database/db';
 import { buildReportPdf } from '../services/pdf';
 import { canShareFile, downloadBlob, sharePdf } from '../services/share';
 import type { Inspection, ReportRecord } from '../types';
 import { friendlyError } from '../utils/errors';
 import { formatDateBR, formatDateTimeBR } from '../utils/format';
 import { summarize } from '../utils/progress';
+import { CHECKLIST } from '../data/checklist';
 
 export default function Report({ id }: { id: string }) {
   const [insp, setInsp] = useState<Inspection | null>(null);
@@ -72,6 +74,18 @@ export default function Report({ id }: { id: string }) {
   }
 
   const s = summarize(insp);
+  const ncItems = CHECKLIST.filter((i) => insp.answers[i.id] === 'NC');
+  // houve comprovação (ou exclusão) depois da emissão do PDF atual?
+  const stale = !!current && insp.updatedAt > current.createdAt;
+  const newVersion = async () => {
+    try {
+      const next = await startNewRevision(insp.id, 'Comprovação de manutenção atualizada');
+      setInsp(next);
+      await generate(next);
+    } catch (e) {
+      toast(friendlyError(e), 'error');
+    }
+  };
   const shareOk = current ? canShareFile(current.blob, current.fileName) : false;
 
   const share = async () => {
@@ -119,8 +133,26 @@ export default function Report({ id }: { id: string }) {
               Este navegador não compartilha arquivos diretamente. Toque em “Salvar PDF” e anexe o arquivo manualmente no WhatsApp ou e-mail.
             </p>
           )}
-          <button className="btn btn-small" disabled={busy} onClick={() => generate(insp)}>Gerar novamente</button>
+          {stale ? (
+            <div className="notice">
+              Há comprovações de manutenção novas que ainda não estão neste PDF.
+              <button className="btn btn-primary btn-block" style={{ marginTop: 8 }} disabled={busy} onClick={newVersion}>
+                Gerar nova versão do PDF
+              </button>
+            </div>
+          ) : (
+            <button className="btn btn-small" disabled={busy} onClick={() => generate(insp)}>Gerar novamente</button>
+          )}
         </section>
+      )}
+
+      {ncItems.length > 0 && (
+        <>
+          <h2>Comprovação da manutenção ({ncItems.length} NC)</h2>
+          {ncItems.map((item) => (
+            <MaintenanceProof key={item.id} inspectionId={insp.id} item={item} onChanged={setInsp} />
+          ))}
+        </>
       )}
 
       {older.length > 0 && (

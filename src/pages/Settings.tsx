@@ -82,7 +82,7 @@ export default function Settings() {
 
       <section className="card">
         <h2>Logomarca no relatório</h2>
-        <p className="muted">Para incluir a logomarca da empresa no PDF, coloque o arquivo <b>logo.png</b> na pasta <b>public</b> do projeto e publique novamente.</p>
+        <p className="muted">A logomarca do relatório fica no arquivo <b>public/logo.png</b> do projeto. Para trocá-la, substitua o arquivo e publique novamente.</p>
       </section>
       {dialog}
     </Layout>

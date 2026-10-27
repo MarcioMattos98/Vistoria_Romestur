@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Answer, Inspection, Photo, ReportRecord, Vehicle } from '../types';
+import type { Answer, Inspection, Photo, PhotoKind, ReportRecord, Vehicle } from '../types';
 import { AppError } from '../utils/errors';
 import { newId, newInspectionCode, normalizeFleet, normalizePlate, todayLocal } from '../utils/format';
 import { pendingText, summarize } from '../utils/progress';
@@ -148,10 +148,13 @@ export async function setAnswer(id: string, itemId: number, answer: Answer): Pro
 
 /* ------------------------------ Fotografias ------------------------------ */
 
-export async function listPhotos(inspectionId: string, itemId?: number): Promise<Photo[]> {
+const kindOf = (p: Photo): PhotoKind => p.kind ?? 'inspection';
+
+export async function listPhotos(inspectionId: string, itemId?: number, kind?: PhotoKind): Promise<Photo[]> {
   const all = await (await getDB()).getAllFromIndex('photos', 'by-inspection', inspectionId);
   return all
     .filter((p) => itemId === undefined || p.itemId === itemId)
+    .filter((p) => kind === undefined || kindOf(p) === kind)
     .sort((a, b) => a.itemId - b.itemId || a.order - b.order);
 }
 
@@ -160,27 +163,39 @@ export async function addPhoto(
   inspectionId: string,
   itemId: number,
   data: { blob: Blob; width: number; height: number },
-  replaceId?: string
+  replaceId?: string,
+  kind: PhotoKind = 'inspection'
 ): Promise<Inspection> {
   const db = await getDB();
   const tx = db.transaction(['photos', 'inspections'], 'readwrite');
   const insp = await tx.objectStore('inspections').get(inspectionId);
   if (!insp) throw new AppError('Vistoria não encontrada.');
-  if (insp.status !== 'in_progress') throw new AppError('Esta vistoria já foi concluída.');
+  const isMaint = kind === 'maintenance';
+  if (isMaint) {
+    // A comprovação de manutenção pode ser anexada mesmo depois de concluir a vistoria, mas só em itens NC.
+    if (insp.answers[itemId] !== 'NC') {
+      throw new AppError('A comprovação de manutenção só pode ser anexada a itens não conformes (NC).');
+    }
+  } else if (insp.status !== 'in_progress') {
+    throw new AppError('Esta vistoria já foi concluída.');
+  }
   const photosStore = tx.objectStore('photos');
   const now = new Date().toISOString();
 
   if (replaceId) {
     const old = await photosStore.get(replaceId);
-    if (!old || old.inspectionId !== inspectionId || old.itemId !== itemId) {
+    if (!old || old.inspectionId !== inspectionId || old.itemId !== itemId || kindOf(old) !== kind) {
       throw new AppError('Fotografia não encontrada para substituição.');
     }
     await photosStore.put({ ...old, ...data, createdAt: now });
   } else {
-    const existing = (await photosStore.index('by-inspection').getAll(inspectionId)).filter((p) => p.itemId === itemId);
+    const existing = (await photosStore.index('by-inspection').getAll(inspectionId)).filter(
+      (p) => p.itemId === itemId && kindOf(p) === kind
+    );
     const order = existing.reduce((m, p) => Math.max(m, p.order), 0) + 1;
-    await photosStore.add({ id: newId(), inspectionId, itemId, order, createdAt: now, ...data });
-    insp.photoCounts[itemId] = existing.length + 1;
+    await photosStore.add({ id: newId(), inspectionId, itemId, order, kind, createdAt: now, ...data });
+    if (isMaint) insp.maintenanceCounts = { ...(insp.maintenanceCounts ?? {}), [itemId]: existing.length + 1 };
+    else insp.photoCounts[itemId] = existing.length + 1;
   }
   insp.updatedAt = now;
   await tx.objectStore('inspections').put(insp);
@@ -195,9 +210,17 @@ export async function deletePhoto(photoId: string): Promise<Inspection> {
   if (!photo) throw new AppError('Fotografia não encontrada.');
   const insp = await tx.objectStore('inspections').get(photo.inspectionId);
   if (!insp) throw new AppError('Vistoria não encontrada.');
-  if (insp.status !== 'in_progress') throw new AppError('Esta vistoria já foi concluída.');
+  const isMaint = kindOf(photo) === 'maintenance';
+  if (!isMaint && insp.status !== 'in_progress') throw new AppError('Esta vistoria já foi concluída.');
   await tx.objectStore('photos').delete(photoId);
-  insp.photoCounts[photo.itemId] = Math.max(0, (insp.photoCounts[photo.itemId] ?? 1) - 1);
+  if (isMaint) {
+    insp.maintenanceCounts = {
+      ...(insp.maintenanceCounts ?? {}),
+      [photo.itemId]: Math.max(0, (insp.maintenanceCounts?.[photo.itemId] ?? 1) - 1),
+    };
+  } else {
+    insp.photoCounts[photo.itemId] = Math.max(0, (insp.photoCounts[photo.itemId] ?? 1) - 1);
+  }
   insp.updatedAt = new Date().toISOString();
   await tx.objectStore('inspections').put(insp);
   await tx.done;
@@ -225,6 +248,15 @@ export async function reopenInspection(id: string): Promise<Inspection> {
     i.completedAt = undefined;
     i.revision += 1;
     i.editLog.push({ at: new Date().toISOString(), note: `Reaberta para edição (revisão ${i.revision})` });
+  });
+}
+
+/** Vistoria concluída que recebeu novas comprovações: abre uma nova revisão, mantendo o PDF anterior guardado. */
+export async function startNewRevision(id: string, note: string): Promise<Inspection> {
+  return mutateInspection(id, (i) => {
+    if (i.status !== 'completed') throw new AppError('A vistoria precisa estar concluída.');
+    i.revision += 1;
+    i.editLog.push({ at: new Date().toISOString(), note: `${note} (revisão ${i.revision})` });
   });
 }
 

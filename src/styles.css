@@ -133,3 +133,6 @@ details summary { cursor: pointer; font-weight: 700; min-height: 40px; display: 
 
 @media (min-width: 700px) { .content { padding: 20px 20px 36px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.card.proof { border-left: 6px solid var(--amber); }
+.notice { background: var(--amber-bg); border: 1px solid var(--amber); border-radius: 8px; padding: 10px 12px; }

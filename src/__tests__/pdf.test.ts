@@ -53,13 +53,30 @@ describe('Teste 6 - PDF', () => {
     const { blob, fileName, pages } = await buildReportPdf(insp, photos);
     const bytes = Buffer.from(await blob.arrayBuffer());
     writeFileSync(join(tmpdir(), 'relatorio-teste.pdf'), bytes);
-    expect(fileName).toBe('Vistoria_Frota_11100_ABC1D23_2026-10-20.pdf');
+    expect(fileName).toBe('Frota_11100_2026-10-20.pdf');
     expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
     expect(pages).toBeGreaterThan(3);
     // uma imagem XObject por fotografia (o jsPDF reaproveita imagens idênticas, então contamos os usos)
     const text = bytes.toString('latin1');
     expect((text.match(/\/Subtype\s*\/Image/g) ?? []).length).toBeGreaterThanOrEqual(2);
     expect(photos.length).toBe(CHECKLIST.reduce((s, i) => s + i.minPhotos, 0));
+  });
+
+  it('lista as NC ao final com a comprovação de manutenção, sem misturar com as fotos da vistoria', async () => {
+    const { insp, photos } = makeData(true);
+    const base = await buildReportPdf(insp, photos);
+    const proof: Photo[] = [1, 2, 3].map((n) => ({
+      id: `m-11-${n}`, inspectionId: 'i1', itemId: 11, order: n, kind: 'maintenance' as const,
+      blob: new Blob([land], { type: 'image/jpeg' }), width: 640, height: 480, createdAt: '',
+    }));
+    const withProof = await buildReportPdf(insp, [...photos, ...proof]);
+    writeFileSync(join(tmpdir(), 'relatorio-com-comprovacao.pdf'), Buffer.from(await withProof.blob.arrayBuffer()));
+    expect(withProof.pages).toBeGreaterThanOrEqual(base.pages);
+    expect(withProof.blob.size).toBeGreaterThan(base.blob.size);
+    // comprovação de item que NÃO é NC não aparece
+    const ignored: Photo = { ...proof[0], id: 'm-1', itemId: 1 };
+    const noNc = await buildReportPdf(insp, [...photos, ignored]);
+    expect(Math.abs(noNc.blob.size - base.blob.size)).toBeLessThan(2000);
   });
 
   it('gera o PDF sem nenhuma foto sem erro', async () => {

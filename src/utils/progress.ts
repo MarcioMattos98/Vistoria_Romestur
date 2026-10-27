@@ -71,3 +71,7 @@ export function pendingText(p: PendingInfo): string {
   if (p.missingPhotos > 0) parts.push(`faltam ${p.missingPhotos} foto${p.missingPhotos > 1 ? 's' : ''}`);
   return `Item ${p.item.id}: ${parts.join(' e ')}`;
 }
+
+export function maintenanceCount(insp: Pick<Inspection, 'maintenanceCounts'>, itemId: number): number {
+  return insp.maintenanceCounts?.[itemId] ?? 0;
+}

@@ -29,7 +29,7 @@ export default function Review({ id }: { id: string }) {
         if (!i) return navigate('/');
         if (i.status === 'completed') return navigate(`/relatorio/${id}`);
         setInsp(i);
-        setPhotos(await listPhotos(id));
+        setPhotos(await listPhotos(id, undefined, 'inspection'));
       } catch (e) {
         toast(friendlyError(e), 'error');
       }

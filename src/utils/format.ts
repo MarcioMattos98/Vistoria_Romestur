@@ -43,7 +43,7 @@ export function newInspectionCode(d: Date = new Date()): string {
   return `VST-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${rand}`;
 }
 
-export function reportFileName(i: { fleet: string; plate: string; date: string; revision: number }): string {
-  const base = `Vistoria_Frota_${safeFileName(i.fleet)}_${safeFileName(i.plate)}_${i.date}`;
+export function reportFileName(i: { fleet: string; date: string; revision: number }): string {
+  const base = `Frota_${safeFileName(i.fleet)}_${i.date}`;
   return i.revision > 1 ? `${base}_rev${i.revision}.pdf` : `${base}.pdf`;
 }

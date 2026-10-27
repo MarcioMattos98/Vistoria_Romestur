@@ -130,3 +130,34 @@ describe('Testes 4 e 5 - fotos obrigatórias e conclusão', () => {
     expect(re.editLog).toHaveLength(1);
   });
 });
+
+describe('Comprovação de manutenção (itens NC)', () => {
+  it('só aceita em item NC, funciona após concluir e não mistura com as fotos da vistoria', async () => {
+    const v = await db.saveVehicle({ fleet: 'A', plate: 'AAA1A11', tag: '1' });
+    const i = await db.createInspection(v);
+    await db.setAnswer(i.id, 11, 'C');
+    await expect(db.addPhoto(i.id, 11, jpg(), undefined, 'maintenance')).rejects.toThrow(/não conformes/);
+
+    await fillAll(i.id); // itens múltiplos de 5 ficam NC (5, 10, 15...)
+    const done = await db.completeInspection(i.id);
+    expect(done.status).toBe('completed');
+
+    const after = await db.addPhoto(i.id, 5, jpg(), undefined, 'maintenance');
+    expect(after.maintenanceCounts?.[5]).toBe(1);
+    expect(after.photoCounts[5]).toBe(1); // contador da vistoria intacto
+    expect((await db.listPhotos(i.id, 5, 'maintenance'))).toHaveLength(1);
+    expect((await db.listPhotos(i.id, 5, 'inspection'))).toHaveLength(1);
+
+    // item concluído continua bloqueado para fotos da vistoria
+    await expect(db.addPhoto(i.id, 5, jpg())).rejects.toThrow(/concluída/);
+
+    const [proof] = await db.listPhotos(i.id, 5, 'maintenance');
+    const del = await db.deletePhoto(proof.id);
+    expect(del.maintenanceCounts?.[5]).toBe(0);
+    expect(del.photoCounts[5]).toBe(1);
+
+    const rev = await db.startNewRevision(i.id, 'Comprovação de manutenção atualizada');
+    expect(rev.revision).toBe(2);
+    expect(rev.status).toBe('completed');
+  });
+});

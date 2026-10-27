@@ -35,17 +35,23 @@ export interface Inspection {
   answers: Partial<Record<number, Answer>>;
   /** Quantidade de fotos por item (mantida na mesma transação que grava a foto). */
   photoCounts: Partial<Record<number, number>>;
+  /** Quantidade de fotos de comprovação de manutenção por item NC. */
+  maintenanceCounts?: Partial<Record<number, number>>;
   completedAt?: string;
   /** Versão do relatório. Aumenta quando uma vistoria concluída é reaberta. */
   revision: number;
   editLog: { at: string; note: string }[];
 }
 
+export type PhotoKind = 'inspection' | 'maintenance';
+
 export interface Photo {
   id: string;
   inspectionId: string;
   itemId: number;
   order: number;
+  /** 'inspection' = foto da vistoria (padrão); 'maintenance' = comprovação da manutenção de um item NC. */
+  kind?: PhotoKind;
   blob: Blob;
   width: number;
   height: number;

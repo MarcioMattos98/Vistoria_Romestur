@@ -5,12 +5,13 @@ interface Props {
   photos: Photo[];
   urls: Map<string, string>;
   required: number;
+  title?: string;
   busy: boolean;
   onAddFiles: (files: File[]) => void;
   onOpen: (photo: Photo) => void;
 }
 
-export default function PhotoSection({ photos, urls, required, busy, onAddFiles, onOpen }: Props) {
+export default function PhotoSection({ photos, urls, required, title = 'Fotografias', busy, onAddFiles, onOpen }: Props) {
   const camera = useRef<HTMLInputElement>(null);
   const gallery = useRef<HTMLInputElement>(null);
   const missing = Math.max(0, required - photos.length);
@@ -22,9 +23,9 @@ export default function PhotoSection({ photos, urls, required, busy, onAddFiles,
   };
 
   return (
-    <section className="photos" aria-label="Fotografias do item">
+    <section className="photos" aria-label={title}>
       <div className="photos-head">
-        <strong>Fotografias</strong>
+        <strong>{title}</strong>
         <span className={missing > 0 ? 'need' : 'ok'}>
           {required === 0
             ? `${photos.length} anexada${photos.length === 1 ? '' : 's'} (não obrigatório)`

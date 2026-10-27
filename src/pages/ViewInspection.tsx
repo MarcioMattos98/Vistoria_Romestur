@@ -49,7 +49,8 @@ export default function ViewInspection({ id }: { id: string }) {
       </section>
       {CHECKLIST.map((item) => {
         const a = insp.answers[item.id];
-        const ph = photos.filter((p) => p.itemId === item.id);
+        const ph = photos.filter((p) => p.itemId === item.id && p.kind !== 'maintenance');
+        const proof = photos.filter((p) => p.itemId === item.id && p.kind === 'maintenance');
         return (
           <article key={item.id} className={`card ${a === 'NC' ? 'nc' : ''}`}>
             <div className="row between">
@@ -60,6 +61,18 @@ export default function ViewInspection({ id }: { id: string }) {
               <div className="mini-thumbs">
                 {ph.map((p, n) => urls.get(p.id) && <img key={p.id} src={urls.get(p.id)} alt={`Item ${item.id} foto ${n + 1}`} onClick={() => setOpen(p)} />)}
               </div>
+            )}
+            {a === 'NC' && (
+              <>
+                <strong>Comprovação da manutenção</strong>
+                {proof.length === 0 ? (
+                  <span className="muted">Não anexada.</span>
+                ) : (
+                  <div className="mini-thumbs">
+                    {proof.map((p, n) => urls.get(p.id) && <img key={p.id} src={urls.get(p.id)} alt={`Item ${item.id} comprovação ${n + 1}`} onClick={() => setOpen(p)} />)}
+                  </div>
+                )}
+              </>
             )}
           </article>
         );

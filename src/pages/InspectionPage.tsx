@@ -3,6 +3,7 @@ import AnswerButtons from '../components/AnswerButtons';
 import { useConfirm } from '../components/ConfirmDialog';
 import ItemIndex from '../components/ItemIndex';
 import Layout from '../components/Layout';
+import MaintenanceProof from '../components/MaintenanceProof';
 import PhotoSection from '../components/PhotoSection';
 import PhotoViewer from '../components/PhotoViewer';
 import ProgressBar from '../components/ProgressBar';
@@ -48,7 +49,7 @@ export default function InspectionPage({ id, itemNo }: { id: string; itemNo: num
 
   const reloadPhotos = useCallback(async () => {
     try {
-      setPhotos(await listPhotos(id, item.id));
+      setPhotos(await listPhotos(id, item.id, 'inspection'));
     } catch (e) {
       toast(friendlyError(e), 'error');
     }
@@ -156,6 +157,10 @@ export default function InspectionPage({ id, itemNo }: { id: string; itemNo: num
           onOpen={setViewer}
         />
       </article>
+
+      {answer === 'NC' && (
+        <MaintenanceProof key={item.id} inspectionId={id} item={item} track={track} onChanged={setInsp} />
+      )}
 
       {viewer && urls.get(viewer.id) && (
         <PhotoViewer

@@ -43,7 +43,7 @@ describe('checklist', () => {
   });
 
   it('nome do arquivo do PDF', () => {
-    expect(reportFileName({ fleet: '11100', plate: 'ABC1D23', date: '2026-10-20', revision: 1 })).toBe('Vistoria_Frota_11100_ABC1D23_2026-10-20.pdf');
-    expect(reportFileName({ fleet: '11100', plate: 'ABC1D23', date: '2026-10-20', revision: 2 })).toBe('Vistoria_Frota_11100_ABC1D23_2026-10-20_rev2.pdf');
+    expect(reportFileName({ fleet: '11100', date: '2026-10-20', revision: 1 })).toBe('Frota_11100_2026-10-20.pdf');
+    expect(reportFileName({ fleet: '11100', date: '2026-10-20', revision: 2 })).toBe('Frota_11100_2026-10-20_rev2.pdf');
   });
 });

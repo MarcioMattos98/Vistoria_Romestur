@@ -8,7 +8,7 @@ React + Vite + TypeScript, dados no IndexedDB (no próprio aparelho), instaláve
 ```bash
 npm install
 npm run dev        # abre em http://localhost:5173 (também acessível pela rede local)
-npm test           # 18 testes automatizados
+npm test           # 20 testes automatizados
 npm run build      # gera a pasta dist/
 npm run preview    # testa a versão de produção
 ```
@@ -32,7 +32,15 @@ Precisa do Node 18 ou superior.
 - **iPhone (Safari):** Compartilhar > *Adicionar à Tela de Início*.
 
 ## Logomarca no PDF
-Coloque o arquivo `logo.png` dentro de `public/` e publique de novo. Sem o arquivo, o relatório sai sem logomarca (nada é inventado).
+A logo fica em `public/logo.png` e aparece no cabeçalho do relatório (e pequena nas páginas seguintes). Para trocar, substitua o arquivo e publique de novo. Sem o arquivo, o relatório sai sem logomarca.
+
+## Nome do PDF
+`Frota_<número da frota>_<data da vistoria>.pdf`, por exemplo `Frota_11100_2026-10-20.pdf` (revisões: `..._rev2.pdf`). O formato está em `reportFileName`, em `src/utils/format.ts`.
+
+## Não conformidades e comprovação de manutenção
+- Itens NC aparecem normalmente na tabela e também em uma seção no **final** do PDF: item, registro da não conformidade e **comprovação da manutenção**.
+- A comprovação é anexada no próprio item NC (campo "Comprovação da manutenção") ou na tela do relatório, **inclusive depois de concluir a vistoria**. Não é obrigatória para concluir.
+- Se chegar comprovação nova depois do PDF emitido, a tela do relatório oferece "Gerar nova versão do PDF" (revisão 2, 3...). O PDF anterior continua guardado.
 
 ## Importante sobre os dados
 - Os dados ficam **no aparelho e no navegador** onde foram criados. A Netlify hospeda só o aplicativo e **não sincroniza** entre celulares.
